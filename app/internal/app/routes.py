@@ -1,6 +1,31 @@
-from flask import Flask, render_template, render_template_string, redirect, url_for, request, session, Response
+from flask import request, Response
 
 from app import app
+
+import hmac
+import os
+
+
+def _require_internal_auth() -> bool:
+  expected = os.getenv('INTERNAL_API_TOKEN', '')
+  presented = request.headers.get('X-Internal-Auth', '')
+
+  # When no token is configured, deny by default.
+  if not expected:
+    return False
+
+  return hmac.compare_digest(expected, presented)
+
+
+@app.before_request
+def enforce_internal_auth():
+  if not request.path.startswith('/devices'):
+    return None
+
+  if _require_internal_auth():
+    return None
+
+  return Response('Unauthorized internal request.', status=401, content_type='text/plain')
 
 
 @app.route('/devices', methods=['GET'])
@@ -127,24 +152,4 @@ Chip status is not available yet.'''
 
 @app.route('/devices/flag/status', methods=['GET'])
 def get_flag_status():
-    with open('/flag') as flag_file:
-        flag_content = flag_file.read()
-
-    response = f'''
-Chip Booting Process:
-
-Booting chip...
-Version: N/A
-Firmware: N/A
-
-Initializing hardware...
-Status: Not available yet
-
-Checking internal components...
-Status: Not available yet
-
-Checking flag value...
-Flag: {flag_content}
-
-Chip status is not available yet.'''
-    return Response(response, status=200, content_type='text/plain')
+  return Response('Not Found', status=404, content_type='text/plain')

@@ -1,60 +1,38 @@
 services:
   db:
     build: ./mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${DB_NAME:?set DB_NAME in .env}
+      MYSQL_USER: ${DB_USER:?set DB_USER in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     expose:
       - 3306
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "--password=hrs_admin_router", "-u", "root"]
-      timeout: 1s
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      timeout: 3s
       retries: 5
       interval: 10s
-
-  haproxy:
-    build: ./haproxy
-    depends_on:
-      mitmproxy:
-        condition: service_healthy
-    expose:
-      - 8001
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/healthcheck"]
-      timeout: 1s
-      retries: 5
-      interval: 10s
-    environment:
-      - SERVER_HOSTNAME=hrs_admin_router
-      - SERVER_PORT=80
-
-  mitmproxy:
-    build: ./mitmproxy
-    depends_on:
-      hrs_admin_router:
-        condition: service_healthy   
-    expose:
-      - 8002
-    ports:
-      - 8002
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost:8002"]
-      timeout: 1s
-      retries: 5
-      interval: 10s
-    environment:
-      - SERVER_HOSTNAME=haproxy
-      - SERVER_PORT=8001
 
   hrs_admin_router:
     build:
       context: ./app
-      args:
-        - FLAG
     depends_on:
       db:
         condition: service_healthy                
-    expose:
-      - 80
+    ports:
+      - "8002:80"
+    environment:
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?set APP_SECRET_KEY in .env}
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:?set DB_NAME in .env}
+      DB_USER: ${DB_USER:?set DB_USER in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0}
+      TEST_USER_PASSWORD: ${TEST_USER_PASSWORD:-test123!ChangeMe}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/"]
-      timeout: 1s
+      timeout: 3s
       retries: 5
       interval: 10s

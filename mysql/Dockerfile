@@ -1,6 +1,3 @@
-FROM mysql:5.7
-
-ENV MYSQL_ROOT_PASSWORD=hrs_admin_router
-ENV MYSQL_DATABASE=database
+FROM mysql:8.4
 
 EXPOSE 3306
