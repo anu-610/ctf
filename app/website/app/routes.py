@@ -39,8 +39,8 @@ def _validate_user_password(user: User, submitted_password: str) -> bool:
     stored_password = user.password or ''
 
     # Standard secure hash path
-    if check_password_hash(stored_password, submitted_password):
-        return True
+    if stored_password.startswith(('pbkdf2:', 'scrypt:')):
+        return check_password_hash(stored_password, submitted_password)
 
     # Legacy plaintext migration fallback
     if stored_password == submitted_password:
